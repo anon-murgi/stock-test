@@ -92,7 +92,22 @@
     }
     .divider { width: 1px; height: 24px; background: var(--border); }
 
-    /* ─── KPI Cards ─── */
+    .ma-btn {
+      padding: 0 10px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .ma-btn.active[data-ma="20"] { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+    .ma-btn.active[data-ma="50"] { background: #8b5cf6; color: #fff; border-color: #8b5cf6; }
+    .ma-btn:not(.active) { opacity: 0.5; }
+
+
     .kpi-row {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -234,8 +249,8 @@
 ═══════════════════════════════════════════ -->
 <script>
   const CONFIG = {
-    owner:  "anon-murgi",   // ← GitHub username
-    repo:   "stock-test",         // ← Repository name
+    owner:  "your-github-username",   // ← GitHub username
+    repo:   "your-repo-name",         // ← Repository name
     branch: "main",
   };
 
@@ -266,6 +281,14 @@
       <button class="range-btn active" data-days="365">1Y</button>
       <button class="range-btn" data-days="730">2Y</button>
       <button class="range-btn" data-days="0">All</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <label>MA</label>
+    <div class="range-btns">
+      <button class="ma-btn active" data-ma="20">MA20</button>
+      <button class="ma-btn active" data-ma="50">MA50</button>
     </div>
 
     <div class="divider"></div>
@@ -310,6 +333,8 @@
             <th data-col="Low">Low <span class="sort-icon">↕</span></th>
             <th data-col="Close">Close <span class="sort-icon">↕</span></th>
             <th data-col="Change">Chg % <span class="sort-icon">↕</span></th>
+            <th data-col="MA20">MA20 <span class="sort-icon">↕</span></th>
+            <th data-col="MA50">MA50 <span class="sort-icon">↕</span></th>
             <th data-col="Volume">Volume <span class="sort-icon">↕</span></th>
           </tr>
         </thead>
@@ -334,6 +359,21 @@ let filtered   = [];   // date-filtered rows
 let sortCol    = "Date";
 let sortDir    = -1;   // -1 = desc, 1 = asc
 let activeDays = 365;
+let showMA     = { 20: true, 50: true };
+
+// ─────────────────────────────────────────────
+//  MOVING AVERAGE HELPER
+//  Computes MA on full allRows so the line is
+//  accurate at the start of filtered window too
+// ─────────────────────────────────────────────
+function computeMA(period) {
+  return allRows.map((_, i) => {
+    if (i < period - 1) return null;
+    const slice = allRows.slice(i - period + 1, i + 1);
+    const avg   = slice.reduce((s, r) => s + r.Close, 0) / period;
+    return { Date: allRows[i].Date, value: parseFloat(avg.toFixed(2)) };
+  }).filter(Boolean);
+}
 
 // ─────────────────────────────────────────────
 //  FETCH HELPERS
@@ -415,6 +455,16 @@ async function loadTicker() {
         };
       })
       .sort((a, b) => a.Date.localeCompare(b.Date));
+
+    // Compute MA on full dataset and attach to rows
+    const ma20map = {};
+    const ma50map = {};
+    computeMA(20).forEach(p => ma20map[p.Date] = p.value);
+    computeMA(50).forEach(p => ma50map[p.Date] = p.value);
+    allRows.forEach(r => {
+      r.MA20 = ma20map[r.Date] ?? null;
+      r.MA50 = ma50map[r.Date] ?? null;
+    });
 
     // Update header timestamp
     const updated = meta.last_updated
@@ -524,6 +574,9 @@ function renderCharts() {
   const vols   = filtered.map(r => r.Volume);
   const colors = filtered.map(r => r.Close >= r.Open ? "#00875a" : "#de350b");
 
+  const fromDate = dates[0];
+  const toDate   = dates[dates.length - 1];
+
   const layout = {
     margin:      { l: 55, r: 16, t: 8, b: 30 },
     paper_bgcolor: "#fff",
@@ -538,19 +591,49 @@ function renderCharts() {
       showgrid: true, gridcolor: "#f0f0f0", gridwidth: 1,
       tickfont: { size: 10 }, tickprefix: "₹",
     },
+    legend: { orientation: "h", x: 0, y: 1.08, font: { size: 11 } },
   };
 
   const config = { displayModeBar: false, responsive: true };
 
-  // Candlestick
-  Plotly.newPlot("chart-candle", [{
+  // Build traces — candlestick first
+  const traces = [{
     type: "candlestick",
     x: dates, open: opens, high: highs, low: lows, close: closes,
     increasing: { line: { color: "#00875a" }, fillcolor: "#00875a" },
     decreasing: { line: { color: "#de350b" }, fillcolor: "#de350b" },
-    name: "",
+    name: "OHLC",
     hoverinfo: "x+y",
-  }], { ...layout, height: 380 }, config);
+  }];
+
+  // MA20 line
+  if (showMA[20]) {
+    const ma20 = computeMA(20).filter(p => p.Date >= fromDate && p.Date <= toDate);
+    traces.push({
+      type: "scatter", mode: "lines",
+      x: ma20.map(p => p.Date),
+      y: ma20.map(p => p.value),
+      line: { color: "#f59e0b", width: 1.5 },
+      name: "MA 20",
+      hovertemplate: "MA20: ₹%{y:.2f}<extra></extra>",
+    });
+  }
+
+  // MA50 line
+  if (showMA[50]) {
+    const ma50 = computeMA(50).filter(p => p.Date >= fromDate && p.Date <= toDate);
+    traces.push({
+      type: "scatter", mode: "lines",
+      x: ma50.map(p => p.Date),
+      y: ma50.map(p => p.value),
+      line: { color: "#8b5cf6", width: 1.5 },
+      name: "MA 50",
+      hovertemplate: "MA50: ₹%{y:.2f}<extra></extra>",
+    });
+  }
+
+  // Candlestick + MA chart
+  Plotly.newPlot("chart-candle", traces, { ...layout, height: 380 }, config);
 
   // Volume bars
   Plotly.newPlot("chart-volume", [{
@@ -589,6 +672,8 @@ function renderTable(searchQuery = "") {
   document.getElementById("table-body").innerHTML = rows.map(r => {
     const chgCls = r.Change >= 0 ? "cell-up" : "cell-down";
     const sign   = r.Change >= 0 ? "+" : "";
+    const ma20   = r.MA20 != null ? fmt(r.MA20) : "—";
+    const ma50   = r.MA50 != null ? fmt(r.MA50) : "—";
     return `<tr>
       <td>${r.Date}</td>
       <td>${fmt(r.Open)}</td>
@@ -596,6 +681,8 @@ function renderTable(searchQuery = "") {
       <td>${fmt(r.Low)}</td>
       <td><strong>${fmt(r.Close)}</strong></td>
       <td class="${chgCls}">${sign}${r.Change.toFixed(2)}%</td>
+      <td style="color:#d97706">${ma20}</td>
+      <td style="color:#7c3aed">${ma50}</td>
       <td>${fmtV(r.Volume)}</td>
     </tr>`;
   }).join("");
@@ -623,6 +710,15 @@ document.querySelectorAll("thead th").forEach(th => {
 // ─────────────────────────────────────────────
 //  EVENT WIRING
 // ─────────────────────────────────────────────
+document.querySelectorAll(".ma-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const period = parseInt(btn.dataset.ma);
+    showMA[period] = !showMA[period];
+    btn.classList.toggle("active", showMA[period]);
+    renderCharts();
+  });
+});
+
 document.querySelectorAll(".range-btn").forEach(btn => {
   btn.addEventListener("click", () => applyRange(parseInt(btn.dataset.days)));
 });
