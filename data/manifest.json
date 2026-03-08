@@ -1,0 +1,57 @@
+[
+  {
+    "ticker": "RELIANCE.NS",
+    "name": "RELIANCE.NS",
+    "currency": "INR",
+    "exchange": "NSI",
+    "last_updated": "2026-03-08T17:07:19Z",
+    "rows": 495,
+    "latest_close": 1404.8,
+    "latest_date": "2026-03-06",
+    "csv_path": "data/RELIANCE_NS.csv"
+  },
+  {
+    "ticker": "TCS.NS",
+    "name": "TCS.NS",
+    "currency": "INR",
+    "exchange": "NSI",
+    "last_updated": "2026-03-08T17:07:21Z",
+    "rows": 495,
+    "latest_close": 2557.6001,
+    "latest_date": "2026-03-06",
+    "csv_path": "data/TCS_NS.csv"
+  },
+  {
+    "ticker": "INFY.NS",
+    "name": "INFY.NS",
+    "currency": "INR",
+    "exchange": "NSI",
+    "last_updated": "2026-03-08T17:07:23Z",
+    "rows": 495,
+    "latest_close": 1308.4,
+    "latest_date": "2026-03-06",
+    "csv_path": "data/INFY_NS.csv"
+  },
+  {
+    "ticker": "HDFCBANK.NS",
+    "name": "HDFCBANK.NS",
+    "currency": "INR",
+    "exchange": "NSI",
+    "last_updated": "2026-03-08T17:07:25Z",
+    "rows": 495,
+    "latest_close": 857.05,
+    "latest_date": "2026-03-06",
+    "csv_path": "data/HDFCBANK_NS.csv"
+  },
+  {
+    "ticker": "ICICIBANK.NS",
+    "name": "ICICIBANK.NS",
+    "currency": "INR",
+    "exchange": "NSI",
+    "last_updated": "2026-03-08T17:07:27Z",
+    "rows": 495,
+    "latest_close": 1313.4,
+    "latest_date": "2026-03-06",
+    "csv_path": "data/ICICIBANK_NS.csv"
+  }
+]
